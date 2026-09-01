@@ -2,7 +2,7 @@
 
 > Submission to the **2026 Zhengda Cup Market Research Competition (正大杯市调大赛)**.
 > A multi-method study of how **emotional value** drives Gen-Z's consumption decisions
-> and repurchase stickiness for "pretty food" (漂亮饭) in 
+> and repurchase stickiness for "pretty food" (漂亮饭) in China.
 
 Combining a **531-respondent survey**, **in-depth interviews**, and **Xiaohongshu (RED)
 comment text mining**, this project traces the psychological loop behind Gen-Z's
