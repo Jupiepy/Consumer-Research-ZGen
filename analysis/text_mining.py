@@ -20,8 +20,8 @@ Usage
 -----
 ::
 
-    py analysis/text_mining.py --input data/red_comments.xlsx
-    py analysis/text_mining.py --input data/red_comments.xlsx --top 40 --output-dir output
+    py analysis/text_mining.py --input data/red_comments.csv
+    py analysis/text_mining.py --input data/red_comments.csv --top 40 --output-dir output
 
 Note on the crawler: the collection step is intentionally not published (RED
 Terms of Service + comment privacy). This module covers the reproducible part --
