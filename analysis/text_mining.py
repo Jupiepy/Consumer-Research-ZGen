@@ -34,6 +34,7 @@ import argparse
 import json
 import re
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 import jieba
@@ -208,13 +209,22 @@ def load_comments(path: Path, column: str) -> list[str]:
 
 def write_outputs(output_dir: Path, top: int,
                   comments: list[str], tokens_by_comment: list[list[str]],
-                  freq_df: pd.DataFrame, results: list[dict]) -> None:
+                  freq_df: pd.DataFrame, results: list[dict],
+                  source: Path | None = None,
+                  column: str | None = None) -> dict:
     """Persist word frequency, per-comment sentiment and summary."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Guard the empty-input case: an empty DataFrame has no columns, which would
+    # make to_csv write a headerless file and the label lookup below raise.
+    if freq_df.empty:
+        freq_df = pd.DataFrame(columns=["词", "词频"])
     freq_df.to_csv(output_dir / "word_frequency.csv", index=False, encoding="utf-8-sig")
 
-    results_df = pd.DataFrame(results)
+    if results:
+        results_df = pd.DataFrame(results)
+    else:
+        results_df = pd.DataFrame(columns=["原文", "情感得分", "情感倾向"])
     results_df.to_csv(output_dir / "sentiment_results.csv", index=False, encoding="utf-8-sig")
 
     labels = results_df["情感倾向"]
@@ -224,7 +234,21 @@ def write_outputs(output_dir: Path, top: int,
     neg = int(counts.get("负面", 0))
     neu = int(counts.get("中性", 0))
     summary = {
+        # Run provenance: results depend on the lexicons and on the input file,
+        # so those numbers travel with the output.
+        "运行时间": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "输入文件": str(source) if source is not None else None,
+        "评论列": column,
+        "top_n": top,
+        "词典规模": {
+            "正面词": len(POSITIVE_WORDS),
+            "负面词": len(NEGATIVE_WORDS),
+            "停用词": len(STOPWORDS),
+            "领域词": len(_DOMAIN_TERMS),
+        },
         "评论总数": total,
+        "有效评论数": sum(1 for t in tokens_by_comment if t),
+        "分词总数": sum(len(t) for t in tokens_by_comment),
         "正面": pos,
         "负面": neg,
         "中性": neu,
@@ -267,7 +291,8 @@ def main() -> None:
         score, label = score_sentiment(tokens)
         results.append({"原文": raw, "情感得分": score, "情感倾向": label})
 
-    summary = write_outputs(output_dir, args.top, comments, tokens_by_comment, freq_df, results)
+    summary = write_outputs(output_dir, args.top, comments, tokens_by_comment, freq_df,
+                            results, source=input_path, column=args.column)
 
     print(f"载入评论: {len(comments)} 条")
     print(f"情感分布: 正面 {summary['正面']} | 负面 {summary['负面']} | 中性 {summary['中性']}")

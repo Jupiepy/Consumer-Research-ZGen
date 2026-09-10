@@ -92,7 +92,8 @@ Outputs written to `output/`:
 
 - `word_frequency.csv` — top-N tokens by count
 - `sentiment_results.csv` — per-comment sentiment label + score
-- `summary.json` — aggregate counts and ratios
+- `summary.json` — aggregate counts and ratios, plus run provenance (timestamp,
+  input file, column, `top_n` and the lexicon sizes the result depends on)
 
 The sentiment model is a **transparent, rule-based baseline** (a small domain
 lexicon + negation handling) rather than a black-box model — extend
