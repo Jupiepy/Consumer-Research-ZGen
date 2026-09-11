@@ -86,7 +86,16 @@ pip install -r requirements.txt
 
 # 2. Run the text-mining pipeline
 python analysis/text_mining.py --input data/red_comments.csv --output-dir output
+
+# drop exact duplicate comments first (see note below)
+python analysis/text_mining.py --input data/red_comments.csv --output-dir output --dedupe
 ```
+
+> The sample file has **10 exact duplicates out of 255 comments** — template
+> comments ("好看", "漂亮") that inflate the frequency table without adding
+> information. The count is always reported in `summary.json` as `重复评论数`;
+> `--dedupe` removes them (245 left, positive share moves 31.0% → 29.8%). Default
+> is off so the published numbers stay comparable.
 
 Outputs written to `output/`:
 

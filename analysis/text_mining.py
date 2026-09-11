@@ -211,7 +211,9 @@ def write_outputs(output_dir: Path, top: int,
                   comments: list[str], tokens_by_comment: list[list[str]],
                   freq_df: pd.DataFrame, results: list[dict],
                   source: Path | None = None,
-                  column: str | None = None) -> dict:
+                  column: str | None = None,
+                  duplicate_count: int = 0,
+                  deduped: bool = False) -> dict:
     """Persist word frequency, per-comment sentiment and summary."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -247,6 +249,8 @@ def write_outputs(output_dir: Path, top: int,
             "领域词": len(_DOMAIN_TERMS),
         },
         "评论总数": total,
+        "重复评论数": duplicate_count,
+        "已去重": deduped,
         "有效评论数": sum(1 for t in tokens_by_comment if t),
         "分词总数": sum(len(t) for t in tokens_by_comment),
         "正面": pos,
@@ -272,6 +276,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--column", default=COMMENT_COLUMN, help="评论列名")
     parser.add_argument("--top", type=int, default=30, help="词频表保留的前 N 个词")
     parser.add_argument("--output-dir", default="output", help="结果输出目录")
+    parser.add_argument("--dedupe", action="store_true",
+                        help="丢弃完全重复的评论（小红书常见刷评/模板评论会虚增词频）")
     return parser.parse_args()
 
 
@@ -281,6 +287,15 @@ def main() -> None:
     output_dir = Path(args.output_dir)
 
     comments = load_comments(input_path, args.column)
+    # Duplicates are reported whether or not they are dropped: repeated template
+    # comments ("好看", "漂亮") inflate the frequency table but are invisible in
+    # the output otherwise.
+    duplicate_count = len(comments) - len(set(comments))
+
+    if args.dedupe:
+        seen: set[str] = set()
+        comments = [c for c in comments if not (c in seen or seen.add(c))]
+
     cleaned = [clean_text(c) for c in comments]
     tokens_by_comment = [tokenize(c) for c in cleaned]
 
@@ -292,12 +307,16 @@ def main() -> None:
         results.append({"原文": raw, "情感得分": score, "情感倾向": label})
 
     summary = write_outputs(output_dir, args.top, comments, tokens_by_comment, freq_df,
-                            results, source=input_path, column=args.column)
+                            results, source=input_path, column=args.column,
+                            duplicate_count=duplicate_count, deduped=args.dedupe)
 
     print(f"载入评论: {len(comments)} 条")
+    if duplicate_count:
+        print(f"重复评论: {duplicate_count} 条"
+              f"（{'已丢弃' if args.dedupe else '未丢弃，可加 --dedupe'}）")
     print(f"情感分布: 正面 {summary['正面']} | 负面 {summary['负面']} | 中性 {summary['中性']}")
     print(f"正面占比: {summary['正面占比']:.1%}")
-    print(f"\nTop-10 高频词:")
+    print("\nTop-10 高频词:")
     for row in freq_df.head(10).itertuples(index=False):
         print(f"  {row[0]:<8} {row[1]}")
     print(f"\n结果已写入: {output_dir.resolve()}")
